@@ -1,0 +1,20 @@
+-- MySQL 8 migration foundation. Not used by the browser-local demo.
+CREATE DATABASE IF NOT EXISTS only_garments CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE only_garments;
+CREATE TABLE users (id BIGINT PRIMARY KEY AUTO_INCREMENT, username VARCHAR(80) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, role ENUM('Owner','Cashier') NOT NULL);
+CREATE TABLE settings (id TINYINT PRIMARY KEY, configuration JSON NOT NULL);
+CREATE TABLE products (id VARCHAR(50) PRIMARY KEY, barcode VARCHAR(40) NOT NULL UNIQUE, name VARCHAR(100) NOT NULL, brand VARCHAR(100), category VARCHAR(80), size VARCHAR(40), colour VARCHAR(60), supplier VARCHAR(150), supplier_invoice VARCHAR(100), mrp DECIMAL(12,2) NOT NULL DEFAULT 0, purchase_price DECIMAL(12,2) NULL, selling_price DECIMAL(12,2) NOT NULL, quantity INT NOT NULL DEFAULT 0, unit VARCHAR(30), description TEXT, status ENUM('Active','Inactive') DEFAULT 'Active', demo BOOLEAN DEFAULT FALSE, CHECK(selling_price>=0), CHECK(purchase_price IS NULL OR purchase_price>=0));
+CREATE TABLE contacts (id VARCHAR(50) PRIMARY KEY, kind ENUM('Customer','Supplier'), name VARCHAR(150) NOT NULL, phone VARCHAR(30), address TEXT, gstin VARCHAR(15));
+CREATE TABLE invoices (id VARCHAR(50) PRIMARY KEY, invoice_number VARCHAR(50) UNIQUE NOT NULL, invoice_date DATE NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, customer_name VARCHAR(150), phone VARCHAR(30), gstin VARCHAR(15), shop_snapshot JSON NOT NULL, totals JSON NOT NULL, total DECIMAL(12,2) NOT NULL, created_by BIGINT, FOREIGN KEY(created_by) REFERENCES users(id));
+CREATE TABLE invoice_lines (id BIGINT PRIMARY KEY AUTO_INCREMENT, invoice_id VARCHAR(50) NOT NULL, product_snapshot JSON NOT NULL, quantity INT NOT NULL, selling_price DECIMAL(12,2) NOT NULL, purchase_price DECIMAL(12,2) NULL, discount DECIMAL(12,2) NOT NULL DEFAULT 0, FOREIGN KEY(invoice_id) REFERENCES invoices(id));
+CREATE TABLE payments (id VARCHAR(50) PRIMARY KEY, invoice_id VARCHAR(50) NOT NULL, payment_date DATE NOT NULL, amount DECIMAL(12,2) NOT NULL, tendered DECIMAL(12,2), method VARCHAR(80) NOT NULL, reference VARCHAR(200), confirmation VARCHAR(80) NOT NULL, FOREIGN KEY(invoice_id) REFERENCES invoices(id), CHECK(amount>0));
+CREATE TABLE credit_notes (id VARCHAR(50) PRIMARY KEY, invoice_id VARCHAR(50) NOT NULL UNIQUE, credit_date DATE NOT NULL, amount DECIMAL(12,2) NOT NULL, type ENUM('Return','Cancellation'), reason TEXT NOT NULL, totals_snapshot JSON NOT NULL, FOREIGN KEY(invoice_id) REFERENCES invoices(id));
+CREATE TABLE refunds (id VARCHAR(50) PRIMARY KEY, invoice_id VARCHAR(50) NOT NULL, refund_date DATE NOT NULL, amount DECIMAL(12,2) NOT NULL, method VARCHAR(80), reference VARCHAR(200), FOREIGN KEY(invoice_id) REFERENCES invoices(id), CHECK(amount>0));
+CREATE TABLE purchases (id VARCHAR(50) PRIMARY KEY, purchase_date DATE NOT NULL, supplier VARCHAR(150) NOT NULL, supplier_invoice VARCHAR(100) NOT NULL, product_description VARCHAR(200), quantity INT NOT NULL, unit_cost DECIMAL(12,2) NOT NULL, total DECIMAL(12,2) NOT NULL, UNIQUE(supplier,supplier_invoice));
+CREATE TABLE supplier_payments (id VARCHAR(50) PRIMARY KEY, purchase_id VARCHAR(50) NOT NULL, payment_date DATE NOT NULL, amount DECIMAL(12,2) NOT NULL, method VARCHAR(80), reference VARCHAR(200), FOREIGN KEY(purchase_id) REFERENCES purchases(id), CHECK(amount>0));
+CREATE TABLE expenses (id VARCHAR(50) PRIMARY KEY, expense_date DATE NOT NULL, category VARCHAR(80), description TEXT, amount DECIMAL(12,2) NOT NULL, method VARCHAR(80), reference VARCHAR(200), CHECK(amount>0));
+CREATE TABLE cash_entries (id VARCHAR(50) PRIMARY KEY, entry_date DATE NOT NULL, signed_amount DECIMAL(12,2) NOT NULL, reference VARCHAR(200));
+CREATE TABLE cash_reconciliations (id VARCHAR(50) PRIMARY KEY, reconciliation_date DATE NOT NULL, expected DECIMAL(12,2) NOT NULL, actual DECIMAL(12,2) NOT NULL, note TEXT);
+CREATE TABLE audit_log (id VARCHAR(50) PRIMARY KEY, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, actor VARCHAR(80) NOT NULL, action VARCHAR(100) NOT NULL, detail TEXT);
+CREATE INDEX idx_invoice_date ON invoices(invoice_date);
+CREATE INDEX idx_payment_date ON payments(payment_date);

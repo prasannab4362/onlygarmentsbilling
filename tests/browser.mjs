@@ -1,0 +1,35 @@
+import { chromium } from 'playwright-core';
+import assert from 'node:assert/strict';
+import {mkdir} from 'node:fs/promises';
+const browser=await chromium.launch({channel:'chrome',headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',err=>errors.push(err.message));page.on('dialog',d=>d.accept());
+await mkdir('test-results',{recursive:true});
+const click=action=>page.locator(`[data-action="${action}"]`).first().click();
+const fill=async(id,value)=>page.locator('#'+id).fill(String(value));
+try{
+ await page.goto('http://127.0.0.1:8080');await fill('password','owner123');await page.locator('#login button').click();
+ await page.screenshot({path:'test-results/dashboard.png',fullPage:true});
+ await page.locator('nav a[href="#products"]').click();await click('product');await fill('name','Test Cotton Shirt');await fill('brand','Test Brand');await fill('size','M');await fill('cost',60);await fill('price',100);await fill('mrp',120);const code=await page.locator('#barcode').inputValue();assert.match(code,/^H[0-9]+$/);await page.locator('#editor button.primary').click();
+ await page.locator('#productSearch').fill(code);assert.match(await page.locator('#productTable').innerText(),/Test Cotton Shirt/);
+ await page.locator('#productTable [data-action="product"]').click();await fill('colour','Blue');await page.locator('#editor button.primary').click();
+ await click('product-label');await page.waitForSelector('#labelPreview .product-qr img');assert.equal(await page.locator('#labelPreview .product-qr img').count(),1);
+ await page.locator('#labelCopies').fill('3');await click('preview-labels');assert.equal(await page.locator('.sticker').count(),3);
+ assert.equal(await page.locator('.product-qr img').count(),3);assert.equal(await page.locator('#labelPreview svg').count(),0);await page.screenshot({path:'test-results/labels.png',fullPage:true});
+ await page.locator('nav a[href="#pos"]').click();await fill('scan',code);await page.locator('#scan').press('Enter');await fill('scan',code);await page.locator('#scan').press('Enter');
+ await page.locator('[data-key="discount"]').fill('10');await page.locator('[data-key="discount"]').press('Tab');await fill('discount',10);await fill('gst',5);await fill('customer','Asha Test');await fill('phone','9999999999');
+ await page.locator('.pa').fill('50');await click('add-pay');const second=page.locator('.payment-row').nth(1);await second.locator('.pm').selectOption('UPI');await second.locator('.pa').fill('50');await second.locator('.pc').selectOption('simulated');await second.locator('.pr').fill('DEMO-TXN');
+ assert.match(await page.locator('#cartTotals').innerText(),/189\.00/);await page.screenshot({path:'test-results/pos.png',fullPage:true});await click('save-bill');await page.waitForSelector('#modal .receipt');assert.match(await page.locator('#modal').innerText(),/Partially Paid/);assert.match(await page.locator('#modal').innerText(),/89\.00/);assert.match(await page.locator('#modal').innerText(),/SIMULATED/);
+ await click('collect');await page.locator('#modal .pa').fill('100');await click('save-payment');assert.match(await page.locator('#modal').innerText(),/Paid/);assert.match(await page.locator('#toast').innerText(),/11\.00/);await click('close');
+ await page.reload();await page.locator('nav a[href="#invoices"]').click();await click('invoice');assert.match(await page.locator('#modal').innerText(),/Asha Test/);await click('close');
+ await page.locator('nav a[href="#expenses"]').click();await click('expense');await fill('description','Packaging test');await fill('amount',20);await page.locator('#editor button.primary').click();assert.match(await page.locator('#main').innerText(),/Packaging test/);
+ await page.locator('nav a[href="#purchases"]').click();await click('purchase');await fill('supplier','Test Supplier');await fill('reference','TEST-PUR-1');await fill('product','Cotton Shirt');await fill('qty',2);await fill('cost',60);await fill('paid',30);await page.locator('#editor button.primary').click();await click('supplier-pay');await fill('amount',20);await page.locator('#editor button.primary').click();assert.match(await page.locator('#main').innerText(),/70\.00/);
+ await page.locator('nav a[href="#cashbook"]').click();assert.match(await page.locator('#main').innerText(),/69\.00/);await click('reconcile');await fill('actual',69);await fill('note','Matched');await page.locator('#editor button.primary').click();assert.match(await page.locator('#main').innerText(),/Matched/);
+ await page.locator('nav a[href="#reports"]').click();assert.match(await page.locator('#report').innerText(),/60\.00/);await page.screenshot({path:'test-results/reports.png',fullPage:true});
+ await page.locator('nav a[href="#invoices"]').click();await click('invoice');await click('credit');await fill('reason','Full test return');await page.locator('#editor button.primary').click();await click('invoice');await click('refund');await fill('amount',139);await fill('reference','Cash refund test');await page.locator('#editor button.primary').click();await click('invoice');await click('refund');await page.locator('#method').selectOption('UPI');await fill('reference','UPI refund test');await page.locator('#editor button.primary').click();
+ await page.locator('nav a[href="#cashbook"]').click();await page.getByRole('heading',{name:'Cash movements'}).waitFor();assert.match(await page.locator('#main').innerText(),/-₹70\.00|₹-70\.00/);
+ for(const route of ['customers','suppliers','printer','settings','payments','dashboard']){await page.locator(`nav a[href="#${route}"]`).click();await page.waitForTimeout(80);assert.ok((await page.locator('#main').innerText()).length>20);}
+ await page.locator('nav a[href="#products"]').click();await fill('productSearch',code);await click('delete-product');assert.match(await page.locator('#productTable').innerText(),/No records/);await page.locator('nav a[href="#invoices"]').click();await click('invoice');assert.match(await page.locator('#modal').innerText(),/Test Cotton Shirt/);await click('close');
+ await page.locator('#logout').click();await page.locator('#username').selectOption('Cashier');await fill('password','cashier123');await page.locator('#login button').click();await page.locator('nav a[href="#products"]').click();await click('product');assert.match(await page.locator('#toast').innerText(),/Owner access/);
+ await page.setViewportSize({width:390,height:844});await page.locator('nav a[href="#dashboard"]').click();await page.screenshot({path:'test-results/mobile.png',fullPage:true});
+ assert.deepEqual(errors,[]);console.log('PASS: browser product CRUD, QR-only labels, POS scanning, discounts/GST, split/partial payments, cash change, reload, expenses, purchases, supplier payment, reports, credit/refunds, role restrictions, mobile navigation.');
+}catch(err){console.error('UI state:',await page.locator('#modal').innerText(),await page.locator('#toast').innerText());await page.screenshot({path:'test-results/failure.png',fullPage:true});throw err;}finally{await browser.close();}
