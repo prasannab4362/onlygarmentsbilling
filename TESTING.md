@@ -1,5 +1,7 @@
 # Verification checklist
 
+Narrow roll regression: `node tests/roll-printing.mjs` checks saved preset selection, 50×25 / 55×25 / 50×20 / 55×20 mm artwork, 90° rotation onto narrow-across media, label bounds, and exactly three print PDF pages for three copies at every size. Physical alignment still depends on measured stock and driver calibration.
+
 Label sizing correction: `node tests/label-sizing.mjs` passed for 12 labels across 60×40, 50×30, 75×50 and portrait 40×50 mm. Verified no overlapping cells, no text overflow, and rendered widths matching millimetre settings. Includes the reported OG1005 / 80 cm combination. Preview and print frame both fit text before printing. Evidence: `test-results/corrected-label-sizes.png` and `.pdf`. Browser workflow and print invocation tests also passed after the correction.
 
 Tested on 19 October 2026 with Node.js 24 and installed Google Chrome on Windows.

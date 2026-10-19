@@ -7,7 +7,7 @@ export function validate(data){
   const ids=new Set();for(const r of data[k]){if(!r||typeof r.id!=='string'||ids.has(r.id))throw Error('Missing or duplicate ID in '+k);ids.add(r.id);}
  }
  const s=data.settings;if(!s||typeof s.shop!=='string'||typeof s.otherMethods!=='string'||!['portrait','landscape'].includes(s.orientation)||!['A4','Roll'].includes(s.paper))throw Error('Invalid shop settings.');
- for(const [k,min,max] of [['width',30,200],['height',25,200],['margin',0,20],['gap',0,20],['columns',1,6],['copies',1,100],['receiptWidth',58,120],['openingCash',0,1e9],['gst',0,100]])if(!Number.isFinite(s[k])||s[k]<min||s[k]>max)throw Error('Invalid setting: '+k);
+ for(const [k,min,max] of [['width',30,200],['height',20,200],['margin',0,20],['gap',0,20],['columns',1,6],['copies',1,100],['receiptWidth',58,120],['openingCash',0,1e9],['gst',0,100]])if(!Number.isFinite(s[k])||s[k]<min||s[k]>max)throw Error('Invalid setting: '+k);
  const codes=new Set();for(const p of data.products){if(typeof p.name!=='string'||!p.name.trim()||typeof p.barcode!=='string'||!p.barcode||codes.has(p.barcode)||!Number.isFinite(p.price)||p.price<0||p.cost!==null&&(!Number.isFinite(p.cost)||p.cost<0)||!Number.isInteger(p.qty)||p.qty<0)throw Error('Invalid or duplicate product.');codes.add(p.barcode);}
  for(const k of ['invoices','payments','credits','refunds','purchases','supplierPayments','expenses','cashEntries'])for(const r of data[k]){const amount=r.total??r.amount;if(!/^\d{4}-\d{2}-\d{2}$/.test(r.date)||!Number.isFinite(amount)||(k!=='cashEntries'&&amount<0))throw Error('Invalid transaction in '+k);}
  const invoiceIds=new Set(data.invoices.map(i=>i.id)),purchaseIds=new Set(data.purchases.map(p=>p.id)),numbers=new Set();
