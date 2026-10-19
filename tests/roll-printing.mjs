@@ -8,6 +8,15 @@ try{
  await page.locator('nav a[href="#printer"]').click();await page.locator('[data-action="apply-narrow-roll"]').click();
  assert.equal(await page.locator('#width').inputValue(),'50');assert.equal(await page.locator('#height').inputValue(),'25');assert.equal(await page.locator('#paper').inputValue(),'Roll');
  await page.reload();assert.equal(await page.locator('#rollFeed').inputValue(),'Narrow edge across roll');
+ assert.equal(await page.locator('#rollPaper').inputValue(),'Roll');
+ assert.match(await page.locator('#rollDimensions').textContent(),/25 mm across.*50 mm feed/);
+ assert.equal(await page.locator('#margin').getAttribute('readonly'),'');
+ await page.locator('nav a[href="#labels"]').click();
+ await page.locator('#labelLayout').selectOption('Portrait reference');
+ assert.match(await page.locator('#rollDimensions').textContent(),/50.*25 mm artwork/,'Changing design must preserve measured sticker dimensions');
+ await page.locator('#rollPaper').selectOption('A4');
+ await page.locator('#rollPaper').selectOption('Roll');
+ await page.reload();assert.equal(await page.locator('#rollPaper').inputValue(),'Roll');
  for(const [i,name] of ['Narrow roll 50 × 25','Narrow roll 55 × 25','Narrow roll 50 × 20','Narrow roll 55 × 20'].entries()){
   await page.evaluate(async(name)=>{const {seed}=await import('/frontend/core.js');const {applyRollPreset}=await import('/printing/profiles.js');const {labelHTML,printDocument}=await import('/printing/print.js');const db=seed();applyRollPreset(db.settings,name);printDocument(labelHTML([db.products[4],db.products[0],db.products[3]],db.settings),db.settings,'labels');},name);
   await page.waitForFunction(n=>window.printed?.length===n,i+1);

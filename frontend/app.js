@@ -80,4 +80,26 @@ function action(a,id,b){
  if(a==='apply-narrow-roll'){admin();commit(d=>{applyRollPreset(d.settings);C.audit(d,role,'Roll preset selected','50 × 25 artwork; 25 × 50 feed');});printer();toast('Roll preset saved. Printer paper size: 25 mm wide × 50 mm feed.');return}if(a==='test-label'){printDocument(labelHTML([db.products[0]||{name:'Test garment',brand:'Test',size:'M',price:100,barcode:'OG-TEST-123'}],db.settings),db.settings,'labels');return}if(a==='test-receipt'){printDocument(`<article class="receipt"><h2>${e(db.settings.shop)}</h2><p>RECEIPT PRINTER TEST</p><hr><p>Test garment · Qty 1 · ${m(100)}</p><p>Printer: ${e(db.settings.printerName||'Choose in print dialog')}</p><p>Configured width: ${db.settings.receiptWidth} mm</p><b>TEST ONLY — NO SALE</b></article>`,db.settings,'thermal');return}
  if(a==='backup'){admin();download(db,'only-garments-backup-'+C.today()+'.json');return}
 }
-window.addEventListener('hashchange',render);window.addEventListener('storage',ev=>{if(ev.key==='only-garments-v1'){db=load();render();toast('Workspace refreshed from another tab.');}});$('#logout').onclick=()=>{role='';sessionStorage.removeItem('og-role');cart=[];draft={};render()};render();
+// Add the same roll controls whenever either printing screen is rendered.
+function rollControls(){
+ const form=$('#printerForm'),studio=$('#labelPreview');
+ if((!form&&!studio)||$('#rollControls'))return;
+ const box=document.createElement('section');box.id='rollControls';box.className='panel';
+ box.innerHTML=`<h2>Sticker roll printer</h2><p>TVS Electronics LP 45 Lite · USB</p><div class="fields"><div class="field"><label for="rollPaper">Paper for stickers</label><select id="rollPaper"><option value="Roll">Sticker roll — one sticker per page</option><option value="A4">A4 sticker sheet</option></select></div>${select('rollPreset','Approximate sticker size',[...Object.keys(NARROW_ROLL_PRESETS)],'')}</div><p id="rollDimensions" class="hint"></p><p class="hint">Measure one sticker, excluding the gap. Two consecutive stickers are two pages. In the printer dialog choose the installed label printer, the custom paper size below, 100% scale, no margins and no headers/footers. Set the physical gap in the printer driver. A Windows driver is required to print.</p>`;
+ main.prepend(box);$('#rollPaper').value=db.settings.paper;
+ const current=Object.entries(NARROW_ROLL_PRESETS).find(([,v])=>v[0]===Number(db.settings.width)&&v[1]===Number(db.settings.height));
+ $('#rollPreset').selectedIndex=-1;if(current)$('#rollPreset').value=current[0];
+ const showSize=()=>{const s=form?{...db.settings,...Object.fromEntries(new FormData(form))}:db.settings;$('#rollDimensions').textContent=rollHelp(s)+(form?' · Save printer settings before test printing.':'');};
+ const refresh=()=>{lastLabels='';if(form)printer();else labels();rollControls();};
+ $('#rollPaper').onchange=()=>{const paper=$('#rollPaper').value;commit(d=>{d.settings.paper=paper;if(paper==='Roll')Object.assign(d.settings,{columns:1,gap:0,margin:0,orientation:'portrait'});});refresh();};
+ $('#rollPreset').onchange=()=>{const preset=$('#rollPreset').value;commit(d=>applyRollPreset(d.settings,preset));refresh();};
+ if(form){
+  const update=()=>{const roll=form.elements.paper.value==='Roll';$('#rollPaper').value=form.elements.paper.value;for(const [key,value] of Object.entries({columns:1,gap:0,margin:0})){if(roll)form.elements[key].value=value;form.elements[key].readOnly=roll;}showSize();};
+  form.addEventListener('input',update);form.addEventListener('change',update);update();
+ }else{
+  $('#labelLayout').onchange=()=>{const layout=$('#labelLayout').value;commit(d=>{d.settings.labelLayout=layout;});refresh();};
+  showSize();
+ }
+}
+new MutationObserver(rollControls).observe(main,{childList:true,subtree:true});
+window.addEventListener('hashchange',render);window.addEventListener('storage',ev=>{if(ev.key==='only-garments-v1'){db=load();render();toast('Workspace refreshed from another tab.');}});$('#logout').onclick=()=>{role='';sessionStorage.removeItem('og-role');cart=[];draft={};render()};render();rollControls();

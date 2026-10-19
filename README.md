@@ -96,6 +96,14 @@ To prepare a future MySQL database, import `database/schema.sql`, then `database
 
 ## Development and tests
 
+### TVS LP 45 Lite sticker roll
+
+In **Sticker Printing** or **Printer Setup**, use **Sticker roll printer → Paper for stickers → Sticker roll — one sticker per page**. Choose the approximate sticker size (50 × 25, 55 × 25, 50 × 20, or 55 × 20 mm). These are starting sizes from the supplied measurements, not verified physical dimensions.
+
+For a 50 × 25 mm sticker fed narrow-edge-first, the Windows custom paper size is **25 mm wide × 50 mm feed**. If the roll instead feeds with the 50 mm edge across the printer, select **Artwork width across roll** in Printer Setup; the custom paper size then becomes **50 × 25 mm**. Measure one sticker excluding its gap. Save settings before test printing. Use 100% scale, no page margins, and no browser headers/footers. The physical gap is configured in the printer driver, not added to the website page size. Each sticker is a separate custom-sized print page.
+
+The laptop detects the USB device as `Bar Code Printer T-9650 Pro`; the physical model was confirmed as **TVS Electronics LP 45 Lite**. USB detection alone does not install a printer queue. A matching Windows driver is still required, and physical printing/alignment has not yet been verified.
+
 `npm.cmd install --no-audit --no-fund` installs pinned source dependencies and Playwright. Runtime vendor files are already included. `npm.cmd test` runs financial tests. Start the server, then run `node tests/browser.mjs` to exercise workflows in installed Chrome. See `TESTING.md` for results and limits.
 
 LocalStorage is a single-browser demonstration store, not a transactional server database. Each save writes one complete snapshot, and storage-write failures leave memory unchanged. A stale-state check reduces accidental overwrites across tabs, but use **one active tab** for transactions; there is no cross-process locking. Clearing browser data removes records. Export backups regularly and protect them as customer data. The app stores no card numbers, CVVs, UPI PINs or banking passwords.
